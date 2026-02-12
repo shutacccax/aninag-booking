@@ -4,12 +4,12 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import FloatingBooking from "@/components/FloatingBooking";
 
 export default function Home() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
 
   const handleBookingAction = async () => {
     setLoading(true);
@@ -34,7 +34,7 @@ export default function Home() {
         options: {
           redirectTo: `${window.location.origin}/book`,
           queryParams: {
-            hd: "up.edu.ph", // 👈 forces Google to suggest UP accounts
+            hd: "up.edu.ph",
           },
         },
       });
@@ -46,11 +46,10 @@ export default function Home() {
     }
   };
 
-
   return (
     <div className="min-h-screen bg-white flex flex-col relative overflow-hidden selection:bg-[#FCC200] selection:text-[#700000]">
       
-      {/* --- SPIRITUAL GRADIENTS (Subtle Brand Presence) --- */}
+      {/* --- SPIRITUAL GRADIENTS --- */}
       <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] bg-[#013220]/5 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] bg-[#800000]/5 rounded-full blur-[100px] pointer-events-none" />
 
@@ -59,7 +58,7 @@ export default function Home() {
         
         <div className="text-center space-y-10 max-w-2xl w-full">
           
-          {/* 1. The Wordmark Logo (Hero element) */}
+          {/* 1. Wordmark */}
           <div className="relative animate-in fade-in zoom-in duration-1000">
             <img 
               src="/website-hero.png" 
@@ -68,7 +67,7 @@ export default function Home() {
             />
           </div>
 
-          {/* 2. Minimalist Text Label */}
+          {/* 2. Label */}
           <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-200">
             <h2 className="text-[#700000] font-bold tracking-[0.3em] uppercase text-[10px] md:text-xs">
               Schedule Your Graduation Photoshoot
@@ -82,11 +81,8 @@ export default function Home() {
             </div>
           )}
 
-
-          {/* 3. Creative Centered Actions */}
+          {/* 3. Actions */}
           <div className="flex flex-col sm:flex-row gap-5 justify-center items-center pt-6 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300">
-            
-            {/* Primary: Deep Green with Motion */}
             <button
               onClick={handleBookingAction}
               disabled={loading}
@@ -99,7 +95,6 @@ export default function Home() {
                )}
             </button>
 
-            {/* Secondary: Clean & Airy */}
             <Link
               href="/packages"
               className="px-12 py-4 border border-gray-100 text-gray-400 rounded-full font-bold text-sm tracking-wide hover:border-[#700000] hover:text-[#700000] hover:bg-[#700000]/5 transition-all min-w-[220px]"
@@ -107,20 +102,13 @@ export default function Home() {
               View Packages
             </Link>
           </div>
-
         </div>
+        
+        {/* Floating Widget placed here */}
+        <FloatingBooking />
       </main>
 
-      {/* --- FOOTER --- */}
-      <footer className="py-12 text-center relative z-10">
-        <div className="flex flex-col items-center gap-4">
-          <div className="flex justify-center items-center gap-8 text-[9px] font-bold tracking-[0.2em] uppercase text-gray-300">
-             <span className="hover:text-[#700000] transition-colors cursor-default">UP Manila CAS</span>
-             <span className="w-1 h-1 bg-[#FCC200] rounded-full" />
-             <span className="hover:text-[#700000] transition-colors cursor-default">Batch 2026</span>
-          </div>
-        </div>
-      </footer>
+
     </div>
   );
 }

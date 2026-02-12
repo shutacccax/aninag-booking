@@ -11,7 +11,7 @@ type DayAvailability = { date: string; remaining: number; };
 type TimeSlot = { time: string; remaining: number; };
 
 
-export default function BookingCalendar({ onBooked }: { onBooked?: () => void }) {
+export default function BookingCalendar({ onBooked, isRescheduling }: { onBooked?: () => void, isRescheduling?: boolean }) {
   const [type, setType] = useState<"studio" | "location">("studio");
   const [availability, setAvailability] = useState<DayAvailability[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -20,6 +20,7 @@ export default function BookingCalendar({ onBooked }: { onBooked?: () => void })
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("");
+  const [showAddonGuide, setShowAddonGuide] = useState(false);
 
   // Lock to March 2026
   const [currentDate] = useState(new Date(2026, 2, 1));
@@ -153,7 +154,7 @@ export default function BookingCalendar({ onBooked }: { onBooked?: () => void })
         )}
       </div>
 
-{/* --- BOOKING MODAL --- */}
+      {/* --- BOOKING MODAL --- */}
       {showModal && selectedDate && selectedTime && (
         <div className="fixed inset-0 bg-[#013220]/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl w-full max-w-lg relative max-h-[90vh] overflow-y-auto">
@@ -211,6 +212,7 @@ export default function BookingCalendar({ onBooked }: { onBooked?: () => void })
                     addons: formData.get("addons") || "",
                     makeup: formData.get("makeup"),
                     remarks: formData.get("remarks") || "",
+                    action: isRescheduling ? 'reschedule' : 'book',
                   };
 
                   const { data: { session } } = await supabase.auth.getSession();
@@ -321,21 +323,63 @@ export default function BookingCalendar({ onBooked }: { onBooked?: () => void })
                 </div>
 
                 {/* --- ADD-ONS --- */}
+                {/* --- ADD-ONS --- */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400 px-1">
-                    Add-ons (Optional)
-                  </label>
+                  <div className="flex items-center justify-between">
+                      <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400 px-1">
+                        Add-ons (Optional)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddonGuide(!showAddonGuide)}
+                        className="text-[10px] text-[#013220] font-bold underline decoration-dotted hover:text-[#800000] transition-colors"
+                      >
+                        {showAddonGuide ? "Hide Examples" : "See Examples"}
+                      </button>
+                  </div>
+
                   <input
                     name="addons"
-                    placeholder="e.g. With parents, with pet, extra retouch"
+                    placeholder="e.g. Couple, Standard, Premium"
                     className="w-full bg-gray-50 border-gray-200 rounded-xl p-4 text-base focus:ring-2 focus:ring-[#013220] outline-none transition-all"
                   />
+
+                  {/* --- COLLAPSIBLE GUIDE --- */}
+                  {showAddonGuide && (
+                    <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 text-xs space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <p className="font-bold text-gray-400 uppercase tracking-widest text-[9px] mb-2">
+                        Please use this format:
+                      </p>
+                      
+                      <div className="grid gap-2">
+                        <div className="flex gap-2 items-start">
+                          <span className="font-bold text-[#013220] min-w-[60px]">Couple</span>
+                          <span className="text-gray-600">2 pax: Juan, Jane</span>
+                        </div>
+                        <div className="flex gap-2 items-start">
+                          <span className="font-bold text-[#013220] min-w-[60px]">Standard</span>
+                          <span className="text-gray-600">3 pax: Juan, Jane, Joe</span>
+                        </div>
+                        <div className="flex gap-2 items-start">
+                          <span className="font-bold text-[#013220] min-w-[60px]">Premium</span>
+                          <span className="text-gray-600">6 pax: Juan, Jane, Joe, +3 more</span>
+                        </div>
+                      </div>
+                      
+                      <p className="text-[10px] text-gray-400 italic mt-2 border-t border-gray-100 pt-2">
+                        Note: Add names of all extra people included in the package.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* --- REMARKS --- */}
+                <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400 px-1">
+                  Remarks (Optional)
+                </label>
                 <textarea
                   name="remarks"
-                  placeholder="Special requests (optional)..."
+                  placeholder="e.g. Will bring pet dog (medium size)"
                   className="w-full bg-gray-50 border-gray-200 rounded-xl p-4 text-base h-20 focus:ring-2 focus:ring-[#013220] outline-none transition-all resize-none"
                 />
 

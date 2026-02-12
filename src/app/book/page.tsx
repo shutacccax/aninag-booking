@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react"; // 1. Import useRef
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import BookingCalendar from "@/components/BookingCalendar";
@@ -8,30 +8,39 @@ import Header from "@/components/Header";
 
 export default function BookPage() {
   const router = useRouter();
+  
+  // State
   const [booking, setBooking] = useState<any>(null);
+  const [initialTime, setInitialTime] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const [rescheduling, setRescheduling] = useState(false);
+  
+  const [isReschedulingMode, setIsReschedulingMode] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-const [initialTime, setInitialTime] = useState<string | null>(null);
+  // 2. NEW: Create a Ref to track rescheduling status reliably
+  // This value persists even if Supabase triggers a re-render
+  const isReschedulingRef = useRef(false);
 
-const fetchBooking = async (session: any) => {
-  try {
-    const res = await fetch("/api/my-booking", {
-      headers: { Authorization: `Bearer ${session.access_token}` },
-    });
-    const data = await res.json();
-    
-    setBooking(data.booking || null);
-    // If the API sent a separate initial_booking_at, save it
-    setInitialTime(data.booking?.initial_booking_at || data.initial_booking_at || null);
-  } catch (error) {
-    console.error("Error fetching booking:", error);
-  } finally {
-    setLoading(false);
-  }
-};
+  const fetchBooking = async (session: any) => {
+    // 3. BLOCKER: If we are in rescheduling mode, STOP immediately.
+    // This prevents the "Tab Switch" from overwriting your empty state with the old booking.
+    if (isReschedulingRef.current) return; 
+
+    try {
+      const res = await fetch("/api/my-booking", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const data = await res.json();
+      
+      setBooking(data.booking || null);
+      setInitialTime(data.booking?.initial_booking_at || data.initial_booking_at || null);
+    } catch (error) {
+      console.error("Error fetching booking:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -61,12 +70,10 @@ const fetchBooking = async (session: any) => {
     };
   }, [router, checkingAuth]);
 
+  const getRescheduleStatus = () => {
+    const startTime = initialTime;
+    if (!startTime) return { allowed: true, hoursLeft: 24 };
 
-const getRescheduleStatus = () => {
-  const startTime = initialTime; // Use the state we just created
-  if (!startTime) return { allowed: true, hoursLeft: 24 };
-
-    // Use the new column from your SQL Trigger
     const originalCreatedDate = new Date(startTime).getTime();
     const now = new Date().getTime();
     const twentyFourHoursInMs = 24 * 60 * 60 * 1000;
@@ -80,33 +87,28 @@ const getRescheduleStatus = () => {
     };
   };
 
-  // Safe status call
   const status = getRescheduleStatus();
 
-  const handleReschedule = async () => {
+  // 4. ACTION: Start Rescheduling
+  const handleReschedule = () => {
     setShowConfirm(false);
-    setRescheduling(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
+    
+    // Update BOTH State (for UI) and Ref (for Logic blocker)
+    setIsReschedulingMode(true);
+    isReschedulingRef.current = true; 
+    
+    setBooking(null);
+  };
 
-    try {
-      const res = await fetch("/api/delete-booking", {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      const data = await res.json();
+  // 5. ACTION: Booking Completed
+  // We call this when the Calendar component successfully creates the new slot
+  const handleBookingSuccess = () => {
+    setIsReschedulingMode(false);
+    isReschedulingRef.current = false; // <--- Unblock the fetcher
 
-      if (data.success) {
-        await fetch("/api/sync-sheet", { method: "POST" });
-        setBooking(null);
-      } else {
-        alert(data.message || "Unable to reschedule");
-      }
-    } catch (err) {
-      alert("Something went wrong. Please try again.");
-    } finally {
-      setRescheduling(false);
-    }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) fetchBooking(session);
+    });
   };
 
   if (loading || checkingAuth) {
@@ -134,7 +136,11 @@ const getRescheduleStatus = () => {
             <div>
               <h3 className="text-xl font-serif font-bold text-[#013220]">Reschedule Session?</h3>
               <p className="text-gray-500 text-sm mt-2">
-                Your current slot will be released. You have <strong>{status.hoursLeft} hours</strong> left to finalize your schedule.
+                Your current slot will be held until you confirm a new one.
+                <br/>
+                <span className="text-xs text-gray-400 italic">
+                  (You have <strong>{status.hoursLeft} hours</strong> remaining in your window)
+                </span>
               </p>
             </div>
             <div className="flex flex-col gap-3">
@@ -142,13 +148,13 @@ const getRescheduleStatus = () => {
                 onClick={handleReschedule}
                 className="w-full py-3 bg-[#800000] text-white rounded-xl font-bold hover:bg-[#600000] transition-colors uppercase text-xs tracking-widest"
               >
-                Yes, Reschedule
+                Find New Slot
               </button>
               <button
                 onClick={() => setShowConfirm(false)}
                 className="w-full py-3 text-gray-400 font-bold hover:text-gray-600 transition-colors uppercase text-xs tracking-widest"
               >
-                Nevermind
+                Keep Current Slot
               </button>
             </div>
           </div>
@@ -157,6 +163,7 @@ const getRescheduleStatus = () => {
 
       <div className="max-w-6xl mx-auto py-12 px-4 sm:px-6">
         {booking ? (
+          /* --- TICKET VIEW --- */
           <div className="max-w-xl mx-auto mt-8 animate-in fade-in zoom-in duration-500">
             <div className="bg-white rounded-[2rem] shadow-2xl overflow-hidden relative border border-gray-100">
               <div className="absolute top-1/2 left-0 w-6 h-6 bg-[#FDFDFD] rounded-full -translate-x-1/2 -translate-y-1/2 border border-gray-100" />
@@ -207,10 +214,9 @@ const getRescheduleStatus = () => {
                     <div className="space-y-2">
                       <button
                         onClick={() => setShowConfirm(true)}
-                        disabled={rescheduling}
                         className="w-full py-3 border-2 border-gray-100 text-gray-400 rounded-xl font-bold hover:border-[#800000] hover:text-[#800000] transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-2"
                       >
-                        {rescheduling ? "Processing..." : "Reschedule Appointment"}
+                        Reschedule Appointment
                       </button>
                       <p className="text-[10px] text-gray-400 uppercase tracking-tighter">
                         Rescheduling window: {status.hoursLeft} hours remaining
@@ -231,20 +237,22 @@ const getRescheduleStatus = () => {
             </div>
           </div>
         ) : (
+          /* --- CALENDAR VIEW --- */
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
              <div className="text-center space-y-3 mb-10">
-              <h1 className="text-4xl md:text-5xl font-serif font-bold text-[#013220]">Select Your Schedule</h1>
+              <h1 className="text-4xl md:text-5xl font-serif font-bold text-[#013220]">
+                 {isReschedulingMode ? "Reschedule Your Slot" : "Select Your Schedule"}
+              </h1>
               <p className="text-gray-500 max-w-xl mx-auto text-base md:text-lg">
-                Choose a date from the calendar, then pick an available time slot on the right.
+                {isReschedulingMode 
+                  ? "Choose a new time. Your previous slot will be cancelled only when you confirm." 
+                  : "Choose a date from the calendar, then pick an available time slot on the right."}
               </p>
             </div>
             <div className="bg-white p-6 md:p-10 rounded-[2.5rem] shadow-xl border border-gray-100">
               <BookingCalendar
-                onBooked={() => {
-                  supabase.auth.getSession().then(({ data: { session } }) => {
-                    if (session) fetchBooking(session);
-                  });
-                }}
+                isRescheduling={isReschedulingMode} 
+                onBooked={handleBookingSuccess} // <--- Updated to use our safe handler
               />
             </div>
           </div>
