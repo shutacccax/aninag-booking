@@ -30,11 +30,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${playfair.variable} ${inter.variable} font-sans antialiased bg-white text-gray-900`}
       >
-        {/* 👇 This stabilizes Supabase session globally */}
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

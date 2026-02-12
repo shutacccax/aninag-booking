@@ -50,7 +50,7 @@ export default function BookPage() {
         setCheckingAuth(false);
         await fetchBooking(session);
       } else if (!session && !checkingAuth) {
-        router.replace("/login");
+        router.replace("/");
       }
     });
 
@@ -58,7 +58,7 @@ export default function BookPage() {
       if (!session && mounted) {
         setTimeout(() => {
           supabase.auth.getSession().then(({ data: { session: final } }) => {
-            if (!final && mounted) router.replace("/login");
+            if (!final && mounted) router.replace("/");
           });
         }, 500);
       }
