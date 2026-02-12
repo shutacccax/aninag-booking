@@ -153,17 +153,36 @@ export default function BookingCalendar({ onBooked }: { onBooked?: () => void })
         )}
       </div>
 
-      {/* --- BOOKING MODAL --- */}
+{/* --- BOOKING MODAL --- */}
       {showModal && selectedDate && selectedTime && (
-        <div className="fixed inset-0 bg-[#013220]/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+        <div className="fixed inset-0 bg-[#013220]/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl w-full max-w-lg relative max-h-[90vh] overflow-y-auto">
             <div className="bg-[#800000] h-1.5 w-1/4 mx-auto mt-3 rounded-full sm:hidden" />
-            <button onClick={() => setShowModal(false)} className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200">✕</button>
+            <button 
+              onClick={() => setShowModal(false)} 
+              className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
+            >
+              ✕
+            </button>
 
             <div className="p-8 sm:p-10">
-              <div className="mb-6">
-                <h2 className="text-2xl sm:text-3xl font-serif font-bold text-gray-900 leading-tight">Finalize Booking</h2>
-                <p className="text-[#800000] font-bold text-sm mt-2 uppercase tracking-wide">{formatDate(selectedDate)} @ {selectedTime}</p>
+              <div className="mb-8">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-2">
+                  <h2 className="text-2xl sm:text-3xl font-serif font-bold text-gray-900 leading-tight">
+                    Finalize Booking
+                  </h2>
+                  {/* --- DYNAMIC HEADER BADGE --- */}
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${
+                    type === 'studio' 
+                      ? 'bg-[#013220]/10 text-[#013220]' 
+                      : 'bg-[#800000]/10 text-[#800000]'
+                  }`}>
+                    {type === 'studio' ? 'Studio Session' : 'Campus Shoot'} 
+                  </span>
+                </div>
+                <p className="text-gray-500 font-medium text-sm">
+                  {formatDate(selectedDate)} @ <span className="text-[#013220] font-bold">{selectedTime}</span>
+                </p>
               </div>
 
               <form
@@ -172,18 +191,26 @@ export default function BookingCalendar({ onBooked }: { onBooked?: () => void })
                   setLoading(true);
 
                   const formData = new FormData(e.currentTarget);
+                  const mobile = formData.get("mobile") as string;
+
+                  // Final validation check before submit
+                  if (mobile.length !== 11 || !mobile.startsWith("09")) {
+                    alert("Please enter a valid 11-digit mobile number starting with 09.");
+                    setLoading(false);
+                    return;
+                  }
 
                   const payload = {
                     type,
                     date: selectedDate,
                     time: selectedTime,
                     name: formData.get("name"),
-                    email: userEmail,
-                    mobile: formData.get("mobile"),
-                    package: formData.get("package"), // ✅ match DB
+                    email: userEmail, // Ensure this variable is available in scope
+                    mobile: mobile,
+                    package: formData.get("package"),
                     addons: formData.get("addons") || "",
                     makeup: formData.get("makeup"),
-                    remarks: formData.get("remarks") || "", // ✅ never null
+                    remarks: formData.get("remarks") || "",
                   };
 
                   const { data: { session } } = await supabase.auth.getSession();
@@ -224,8 +251,12 @@ export default function BookingCalendar({ onBooked }: { onBooked?: () => void })
                     <input
                       name="name"
                       required
-                      placeholder="SURNAME, First Name M.I."
-                      className="w-full mt-1 bg-gray-50 border-gray-200 rounded-xl p-4 text-base focus:ring-2 focus:ring-[#013220]"
+                      placeholder="DELA CRUZ, JUAN B."
+                      // --- AUTO CAPITALIZE ---
+                      onInput={(e) => {
+                        e.currentTarget.value = e.currentTarget.value.toUpperCase();
+                      }}
+                      className="w-full mt-1 bg-gray-50 border-gray-200 rounded-xl p-4 text-base focus:ring-2 focus:ring-[#013220] outline-none transition-all placeholder:normal-case"
                     />
                   </div>
 
@@ -236,8 +267,15 @@ export default function BookingCalendar({ onBooked }: { onBooked?: () => void })
                     <input
                       name="mobile"
                       required
+                      type="tel"
+                      maxLength={11}
                       placeholder="09XXXXXXXXX"
-                      className="w-full mt-1 bg-gray-50 border-gray-200 rounded-xl p-4 text-base"
+                      // --- PHONE VALIDATION ---
+                      onInput={(e) => {
+                        // Remove non-numeric characters
+                        e.currentTarget.value = e.currentTarget.value.replace(/[^0-9]/g, '');
+                      }}
+                      className="w-full mt-1 bg-gray-50 border-gray-200 rounded-xl p-4 text-base focus:ring-2 focus:ring-[#013220] outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -250,7 +288,7 @@ export default function BookingCalendar({ onBooked }: { onBooked?: () => void })
                   <select
                     name="package"
                     required
-                    className="w-full mt-1 bg-gray-50 border-gray-200 rounded-xl p-4 text-base appearance-none"
+                    className="w-full mt-1 bg-gray-50 border-gray-200 rounded-xl p-4 text-base appearance-none focus:ring-2 focus:ring-[#013220] outline-none transition-all"
                   >
                     <option value="">Select Package</option>
                     <option value="Econo Package A">Econo Package A</option>
@@ -270,7 +308,7 @@ export default function BookingCalendar({ onBooked }: { onBooked?: () => void })
                   <select
                     name="makeup"
                     required
-                    className="w-full mt-1 bg-gray-50 border-gray-200 rounded-xl p-4 text-base appearance-none"
+                    className="w-full mt-1 bg-gray-50 border-gray-200 rounded-xl p-4 text-base appearance-none focus:ring-2 focus:ring-[#013220] outline-none transition-all"
                   >
                     <option value="">Select Option</option>
                     <option value="Availing hair & makeup services">
@@ -290,28 +328,33 @@ export default function BookingCalendar({ onBooked }: { onBooked?: () => void })
                   <input
                     name="addons"
                     placeholder="e.g. With parents, with pet, extra retouch"
-                    className="w-full bg-gray-50 border-gray-200 rounded-xl p-4 text-base"
+                    className="w-full bg-gray-50 border-gray-200 rounded-xl p-4 text-base focus:ring-2 focus:ring-[#013220] outline-none transition-all"
                   />
                 </div>
-
 
                 {/* --- REMARKS --- */}
                 <textarea
                   name="remarks"
                   placeholder="Special requests (optional)..."
-                  className="w-full bg-gray-50 border-gray-200 rounded-xl p-4 text-base h-20"
+                  className="w-full bg-gray-50 border-gray-200 rounded-xl p-4 text-base h-20 focus:ring-2 focus:ring-[#013220] outline-none transition-all resize-none"
                 />
 
                 {/* --- SUBMIT --- */}
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-[#013220] text-white py-4 rounded-xl font-bold hover:bg-[#0a442e] transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                  className="w-full bg-[#013220] text-white py-4 rounded-xl font-bold hover:bg-[#0a442e] transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:active:scale-100"
                 >
-                  {loading ? "Processing..." : "Confirm My Slot"}
+                  {loading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Processing...
+                    </span>
+                  ) : (
+                    "Confirm My Slot"
+                  )}
                 </button>
               </form>
-
             </div>
           </div>
         </div>
