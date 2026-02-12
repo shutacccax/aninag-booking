@@ -8,26 +8,44 @@ import Link from "next/link";
 export default function Home() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
 
   const handleBookingAction = async () => {
     setLoading(true);
+    setErrorMessage(null);
+
     const { data: { session } } = await supabase.auth.getSession();
 
     if (session) {
+      const email = session.user.email;
+
+      if (!email?.endsWith("@up.edu.ph")) {
+        await supabase.auth.signOut();
+        setErrorMessage("Access restricted. Please use your UP email (@up.edu.ph).");
+        setLoading(false);
+        return;
+      }
+
       router.push("/book");
     } else {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/book`,
+          queryParams: {
+            hd: "up.edu.ph", // 👈 forces Google to suggest UP accounts
+          },
         },
       });
+
       if (error) {
-        alert(error.message);
+        setErrorMessage("Unable to sign in. Please try again.");
         setLoading(false);
       }
     }
   };
+
 
   return (
     <div className="min-h-screen bg-white flex flex-col relative overflow-hidden selection:bg-[#FCC200] selection:text-[#700000]">
@@ -57,6 +75,13 @@ export default function Home() {
             </h2>
             <div className="w-8 h-0.5 bg-[#FCC200] mx-auto rounded-full" />
           </div>
+
+          {errorMessage && (
+            <div className="max-w-md mx-auto p-4 bg-[#800000]/5 border border-[#800000]/20 rounded-2xl text-[#800000] text-sm font-medium animate-in fade-in duration-300">
+              {errorMessage}
+            </div>
+          )}
+
 
           {/* 3. Creative Centered Actions */}
           <div className="flex flex-col sm:flex-row gap-5 justify-center items-center pt-6 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300">

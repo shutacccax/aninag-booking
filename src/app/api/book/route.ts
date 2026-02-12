@@ -63,6 +63,13 @@ export async function POST(req: Request) {
     return Response.json({ success: false, message: "Invalid user" });
   }
 
+  if (!user.email?.endsWith("@up.edu.ph")) {
+  return Response.json({
+    success: false,
+    message: "Only UP email accounts are allowed.",
+  });
+}
+
   try {
     const body = await req.json();
     const { type, date, time } = body;
