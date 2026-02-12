@@ -188,11 +188,31 @@ export async function POST(req: Request) {
         const { data: pending } = await supabaseAdmin.from("bookings").select("*").eq("synced", false).neq("id", inserted.id).limit(5);
         if (pending) {
             for (const p of pending) {
-                // ... simplistic retry logic for others ...
-                syncWithRetry(p).then(ok => {
-                    if(ok) supabaseAdmin.from("bookings").update({ synced: true }).eq("id", p.id);
-                });
+              const payload = {
+                id: p.id,
+                type: p.type,
+                date: p.date,
+                time: p.time,
+                name: p.name,
+                email: p.email,
+                mobile: p.mobile,
+                packageName: p.package,   // 🔥 FIX
+                addOns: p.addons,         // 🔥 FIX
+                makeup: p.makeup,
+                remarks: p.remarks,
+                status: p.status,
+              };
+
+              syncWithRetry(payload).then(ok => {
+                if (ok) {
+                  supabaseAdmin
+                    .from("bookings")
+                    .update({ synced: true })
+                    .eq("id", p.id);
+                }
+              });
             }
+
         }
     })();
 
