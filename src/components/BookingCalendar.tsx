@@ -104,24 +104,51 @@ export default function BookingCalendar({ onBooked }: { onBooked?: () => void })
       {/* RIGHT: Time Slots */}
       <div className="w-full lg:w-1/3 border-t lg:border-t-0 lg:border-l border-gray-100 lg:pl-8 pt-8 lg:pt-0">
         <h3 className="text-lg font-serif font-bold text-gray-900 mb-4">Available Times</h3>
+        
         {!selectedDate ? (
           <div className="h-64 flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-100 rounded-xl bg-gray-50/50">
-            <span className="text-2xl mb-2">📅</span><p className="text-sm">Select a date to see times</p>
+            <span className="text-2xl mb-2">📅</span>
+            <p className="text-sm">Select a date to see times</p>
           </div>
         ) : (
           <div className="animate-in slide-in-from-right-4 duration-300">
-             <p className="text-sm font-medium text-[#800000] mb-4 uppercase tracking-widest">{formatDate(selectedDate)}</p>
-             <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-               {slots.length === 0 ? <div className="text-center py-8 text-gray-400">No slots available</div> : slots.map((slot) => {
+            <p className="text-sm font-medium text-[#800000] mb-4 uppercase tracking-widest">
+              {formatDate(selectedDate)}
+            </p>
+            
+            {/* REMOVED: max-h-[400px] and overflow-y-auto */}
+            <div className="grid grid-cols-1 gap-3">
+              {slots.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">No slots available</div>
+              ) : (
+                slots.map((slot) => {
                   const isFull = slot.remaining <= 0;
                   return (
-                    <button key={slot.time} disabled={isFull} onClick={() => { setSelectedTime(slot.time); setShowModal(true); }} className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all group ${isFull ? "bg-gray-50 border-gray-100 opacity-60 cursor-not-allowed" : "bg-white border-gray-200 hover:border-[#013220] hover:shadow-md cursor-pointer"}`}>
-                      <span className={`font-bold text-sm ${isFull ? "text-gray-400" : "text-gray-900 group-hover:text-[#013220]"}`}>{slot.time}</span>
-                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${isFull ? "bg-gray-200 text-gray-500" : "bg-[#013220]/10 text-[#013220] group-hover:bg-[#013220] group-hover:text-white transition-colors"}`}>{isFull ? "FULL" : `${slot.remaining} SLOTS`}</span>
+                    <button
+                      key={slot.time}
+                      disabled={isFull}
+                      onClick={() => { setSelectedTime(slot.time); setShowModal(true); }}
+                      className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all group ${
+                        isFull 
+                          ? "bg-gray-50 border-gray-100 opacity-60 cursor-not-allowed" 
+                          : "bg-white border-gray-200 hover:border-[#013220] hover:shadow-md cursor-pointer"
+                      }`}
+                    >
+                      <span className={`font-bold text-sm ${isFull ? "text-gray-400" : "text-gray-900 group-hover:text-[#013220]"}`}>
+                        {slot.time}
+                      </span>
+                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${
+                        isFull 
+                          ? "bg-gray-200 text-gray-500" 
+                          : "bg-[#013220]/10 text-[#013220] group-hover:bg-[#013220] group-hover:text-white transition-colors"
+                      }`}>
+                        {isFull ? "FULL" : `${slot.remaining} SLOTS`}
+                      </span>
                     </button>
                   );
-               })}
-             </div>
+                })
+              )}
+            </div>
           </div>
         )}
       </div>
