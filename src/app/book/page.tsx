@@ -161,48 +161,72 @@ export default function BookPage() {
         </div>
       )}
 
-      <div className="max-w-6xl mx-auto py-12 px-4 sm:px-6">
-        {booking ? (
-          /* --- TICKET VIEW --- */
-          <div className="max-w-xl mx-auto mt-8 animate-in fade-in zoom-in duration-500">
+      <div className="max-w-6xl mx-auto py-12 px-4 sm:px-6 space-y-20">
+
+        {/* ===================== */}
+        {/* ===== TICKET ========= */}
+        {/* ===================== */}
+
+        {booking && (
+          <div className="max-w-xl mx-auto animate-in fade-in zoom-in duration-500">
             <div className="bg-white rounded-[2rem] shadow-2xl overflow-hidden relative border border-gray-100">
+
+              {/* Decorative Cut Marks */}
               <div className="absolute top-1/2 left-0 w-6 h-6 bg-[#FDFDFD] rounded-full -translate-x-1/2 -translate-y-1/2 border border-gray-100" />
               <div className="absolute top-1/2 right-0 w-6 h-6 bg-[#FDFDFD] rounded-full translate-x-1/2 -translate-y-1/2 border border-gray-100" />
               <div className="absolute top-1/2 left-4 right-4 h-px border-t-2 border-dashed border-gray-200" />
 
+              {/* Top */}
               <div className="bg-[#013220] p-10 text-center text-white relative z-10 pb-16">
                 <div className="inline-flex p-3 bg-white/10 rounded-full mb-4">
                   <span className="text-3xl">🎓</span>
                 </div>
-                <h2 className="text-3xl font-serif font-bold tracking-wide">You're Scheduled</h2>
-                <p className="text-white/60 text-sm mt-2 uppercase tracking-widest">Aninag 2026 Yearbook</p>
+                <h2 className="text-3xl font-serif font-bold tracking-wide">
+                  You're Scheduled
+                </h2>
+                <p className="text-white/60 text-sm mt-2 uppercase tracking-widest">
+                  Aninag 2026 Yearbook
+                </p>
               </div>
 
+              {/* Bottom */}
               <div className="p-10 pt-16 bg-white relative z-10">
                 <div className="grid grid-cols-2 gap-y-8 gap-x-4 text-center">
+
                   <div>
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Date</p>
                     <p className="text-xl font-serif font-bold text-[#013220]">
-                      {new Date(booking.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      {new Date(booking.date).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })}
                     </p>
                   </div>
+
                   <div>
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Time</p>
-                    <p className="text-xl font-serif font-bold text-[#013220]">{booking.time}</p>
+                    <p className="text-xl font-serif font-bold text-[#013220]">
+                      {booking.time}
+                    </p>
                   </div>
+
                   <div className="col-span-2">
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Status</p>
                     <span className="inline-block mt-2 px-4 py-1 bg-[#800000]/10 text-[#800000] rounded-full text-xs font-bold uppercase">
                       {booking.status}
                     </span>
                   </div>
+
                   <div className="col-span-2">
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Package</p>
-                    <p className="text-sm font-semibold text-gray-800 leading-snug mt-1">{booking.package || "N/A"}</p>
+                    <p className="text-sm font-semibold text-gray-800 leading-snug mt-1">
+                      {booking.package || "N/A"}
+                    </p>
                   </div>
                 </div>
 
                 <div className="mt-10 pt-8 border-t border-gray-100 text-center space-y-4">
+
                   <button
                     onClick={() => router.push("/")}
                     className="w-full py-4 bg-[#013220] text-white rounded-xl font-bold hover:bg-[#02422b] transition-all text-sm uppercase tracking-widest shadow-lg shadow-[#013220]/20"
@@ -210,54 +234,81 @@ export default function BookPage() {
                     Finish & Back to Home
                   </button>
 
-                  {status.allowed ? (
-                    <div className="space-y-2">
-                      <button
-                        onClick={() => setShowConfirm(true)}
-                        className="w-full py-3 border-2 border-gray-100 text-gray-400 rounded-xl font-bold hover:border-[#800000] hover:text-[#800000] transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-2"
-                      >
-                        Reschedule Appointment
-                      </button>
-                      <p className="text-[10px] text-gray-400 uppercase tracking-tighter">
-                        Rescheduling window: {status.hoursLeft} hours remaining
-                      </p>
-                    </div>
-                  ) : (
+                  {status.allowed && (
+                    <button
+                      onClick={() => setShowConfirm(true)}
+                      className="w-full py-3 border-2 border-gray-100 text-gray-400 rounded-xl font-bold hover:border-[#800000] hover:text-[#800000] transition-all text-xs uppercase tracking-widest"
+                    >
+                      Reschedule Appointment
+                    </button>
+                  )}
+
+                  {/* 🔥 NEW BUTTON — ALWAYS VISIBLE */}
+                  <button
+                    onClick={() => {
+                      document.getElementById("calendar-section")?.scrollIntoView({
+                        behavior: "smooth",
+                      });
+                    }}
+                    className="w-full py-3 border border-gray-200 text-[#013220] rounded-xl font-bold hover:bg-[#013220]/5 transition-all text-xs uppercase tracking-widest"
+                  >
+                    View Available Schedules
+                  </button>
+
+                  {!status.allowed && (
                     <div className="p-3 bg-gray-50 rounded-xl border border-gray-200">
                       <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-widest">
                         Rescheduling Locked
                       </p>
                       <p className="text-[9px] text-gray-400 mt-1">
-                        The strict 24-hour modification period has ended.
+                        24-hour modification window has ended.
                       </p>
                     </div>
                   )}
+
                 </div>
+
               </div>
             </div>
           </div>
-        ) : (
-          /* --- CALENDAR VIEW --- */
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-             <div className="text-center space-y-3 mb-10">
-              <h1 className="text-4xl md:text-5xl font-serif font-bold text-[#013220]">
-                 {isReschedulingMode ? "Reschedule Your Slot" : "Select Your Schedule"}
-              </h1>
-              <p className="text-gray-500 max-w-xl mx-auto text-base md:text-lg">
-                {isReschedulingMode 
-                  ? "Choose a new time. Your previous slot will be cancelled only when you confirm." 
-                  : "Choose a date from the calendar, then pick an available time slot on the right."}
-              </p>
-            </div>
-            <div className="bg-white p-6 md:p-10 rounded-[2.5rem] shadow-xl border border-gray-100">
-              <BookingCalendar
-                isRescheduling={isReschedulingMode} 
-                onBooked={handleBookingSuccess} // <--- Updated to use our safe handler
-              />
-            </div>
-          </div>
         )}
+
+        {/* ===================== */}
+        {/* ===== CALENDAR ====== */}
+        {/* ===================== */}
+
+        <div
+          id="calendar-section"
+          className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700"
+        >
+
+          <div className="text-center space-y-3">
+            <h1 className="text-4xl md:text-5xl font-serif font-bold text-[#013220]">
+              {booking
+                ? (isReschedulingMode ? "Reschedule Your Slot" : "Available Schedules")
+                : "Select Your Schedule"}
+            </h1>
+
+            <p className="text-gray-500 max-w-xl mx-auto text-base md:text-lg">
+              {booking
+                ? status.allowed
+                  ? "You may reschedule within 24 hours. Otherwise, slots are view-only."
+                  : "Viewing mode only. Rescheduling period has ended."
+                : "Choose a date from the calendar, then pick an available time slot."}
+            </p>
+          </div>
+
+          <div className="bg-white p-6 md:p-10 rounded-[2.5rem] shadow-xl border border-gray-100">
+            <BookingCalendar
+              isRescheduling={isReschedulingMode}
+              viewOnly={booking && !isReschedulingMode}
+              onBooked={handleBookingSuccess}
+            />
+          </div>
+
+        </div>
       </div>
+
     </div>
   );
 }

@@ -1,0 +1,17 @@
+name: Sync Google Sheets
+
+on:
+  schedule:
+    # This triggers the sync roughly every 5 minutes
+    - cron: "*/5 * * * *"
+  workflow_dispatch: # This allows you to run it manually from the Actions tab
+
+jobs:
+  call-sync-api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Vercel Sync
+        run: |
+          curl -X POST https://book-aninag2026.vercel.app/api/sync-sheet \
+          -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+          -H "Content-Type: application/json"

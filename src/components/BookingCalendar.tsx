@@ -11,7 +11,16 @@ type DayAvailability = { date: string; remaining: number; };
 type TimeSlot = { time: string; remaining: number; };
 
 
-export default function BookingCalendar({ onBooked, isRescheduling }: { onBooked?: () => void, isRescheduling?: boolean }) {
+export default function BookingCalendar({
+  onBooked,
+  isRescheduling,
+  viewOnly
+}: {
+  onBooked?: () => void,
+  isRescheduling?: boolean,
+  viewOnly?: boolean
+})
+{
   const [type, setType] = useState<"studio" | "location">("studio");
   const [availability, setAvailability] = useState<DayAvailability[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -127,25 +136,41 @@ export default function BookingCalendar({ onBooked, isRescheduling }: { onBooked
                   return (
                     <button
                       key={slot.time}
-                      disabled={isFull}
-                      onClick={() => { setSelectedTime(slot.time); setShowModal(true); }}
+                      disabled={isFull || viewOnly}
+                      onClick={() => {
+                        if (viewOnly) return;
+                        setSelectedTime(slot.time);
+                        setShowModal(true);
+                      }}
                       className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all group ${
-                        isFull 
-                          ? "bg-gray-50 border-gray-100 opacity-60 cursor-not-allowed" 
+                        isFull || viewOnly
+                          ? "bg-gray-50 border-gray-100 opacity-60 cursor-not-allowed"
                           : "bg-white border-gray-200 hover:border-[#013220] hover:shadow-md cursor-pointer"
                       }`}
                     >
-                      <span className={`font-bold text-sm ${isFull ? "text-gray-400" : "text-gray-900 group-hover:text-[#013220]"}`}>
+                      <span
+                        className={`font-bold text-sm ${
+                          isFull || viewOnly
+                            ? "text-gray-400"
+                            : "text-gray-900 group-hover:text-[#013220]"
+                        }`}
+                      >
                         {slot.time}
                       </span>
-                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${
-                        isFull 
-                          ? "bg-gray-200 text-gray-500" 
-                          : "bg-[#013220]/10 text-[#013220] group-hover:bg-[#013220] group-hover:text-white transition-colors"
-                      }`}>
+
+                      <span
+                        className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${
+                          isFull
+                            ? "bg-gray-200 text-gray-500"
+                            : viewOnly
+                            ? "bg-gray-100 text-gray-400"
+                            : "bg-[#013220]/10 text-[#013220] group-hover:bg-[#013220] group-hover:text-white transition-colors"
+                        }`}
+                      >
                         {isFull ? "FULL" : `${slot.remaining} SLOTS`}
                       </span>
                     </button>
+
                   );
                 })
               )}

@@ -33,10 +33,16 @@ export async function GET(req: Request) {
   });
 
   // 3️⃣ Merge capacity + booked
-  const result = configs.map((slot) => ({
-    time: slot.time,
-    remaining: slot.capacity - (countMap[slot.time] || 0),
-  }));
+  const result = configs
+    .map((slot) => ({
+      time: slot.time,
+      remaining: slot.capacity - (countMap[slot.time] || 0),
+    }))
+    .sort((a, b) => {
+      return new Date(`1970/01/01 ${a.time}`).getTime() -
+            new Date(`1970/01/01 ${b.time}`).getTime();
+    });
+
 
   return Response.json(result);
 }

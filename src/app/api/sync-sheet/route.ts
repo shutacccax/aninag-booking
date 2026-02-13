@@ -1,4 +1,10 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
+
+// Use the Service Role Key for the Cron job to bypass RLS
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 async function syncWithRetry(payload: any, retries = 3) {
   for (let i = 1; i <= retries; i++) {
@@ -9,59 +15,79 @@ async function syncWithRetry(payload: any, retries = 3) {
         body: JSON.stringify(payload),
       });
 
-      if (res.ok) return true;
+      const result = await res.json();
+      if (result.success) return true; // Check for your GAS success flag
     } catch (err) {
       console.error(`Retry ${i} failed`);
     }
-
-    await new Promise((r) => setTimeout(r, 500));
+    if (i < retries) await new Promise((r) => setTimeout(r, 1000));
   }
-
   return false;
 }
 
-export async function POST() {
-  const { data: bookings } = await supabase
-    .from("bookings")
-    .select("*")
-    .eq("synced", false);
-
-  if (!bookings || bookings.length === 0) {
-    return Response.json({ message: "No unsynced bookings" });
+export async function POST(req: Request) {
+  // 1. SECURITY: Verify the Secret from GitHub Action
+  const authHeader = req.headers.get("authorization");
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return new Response("Unauthorized", { status: 401 });
   }
 
-  let successCount = 0;
+  try {
+    // 2. FETCH: Get unsynced bookings (Limit to 20 to avoid timeouts)
+    const { data: bookings, error: fetchError } = await supabaseAdmin
+      .from("bookings")
+      .select("*")
+      .eq("synced", false)
+      .limit(20);
 
-  for (const booking of bookings) {
-    const payload = {
-    id: booking.id,
-    type: booking.type,
-    date: booking.date,
-    time: booking.time,
-    name: booking.name,
-    email: booking.email,
-    mobile: booking.mobile,
-    packageName: booking.package,   // 🔥 map correctly
-    addOns: booking.addons,         // 🔥 map correctly
-    makeup: booking.makeup,
-    remarks: booking.remarks,
-    status: booking.status,
-    };
+    if (fetchError) throw fetchError;
+    if (!bookings || bookings.length === 0) {
+      return Response.json({ message: "No unsynced bookings" });
+    }
 
-    const success = await syncWithRetry(payload, 3);
+    const successfulIds: string[] = [];
 
+    // 3. SYNC: Process in parallel for speed
+    await Promise.all(
+      bookings.map(async (booking) => {
+        const payload = {
+          id: booking.id,
+          type: booking.type,
+          date: booking.date,
+          time: booking.time,
+          name: booking.name,
+          email: booking.email,
+          mobile: booking.mobile,
+          packageName: booking.package,
+          addOns: booking.addons,
+          makeup: booking.makeup,
+          remarks: booking.remarks,
+          status: booking.status,
+        };
 
-    if (success) {
-      await supabase
+        const success = await syncWithRetry(payload);
+        if (success) {
+          successfulIds.push(booking.id);
+        }
+      })
+    );
+
+    // 4. BATCH UPDATE: Update all successful IDs at once
+    if (successfulIds.length > 0) {
+      const { error: updateError } = await supabaseAdmin
         .from("bookings")
         .update({ synced: true })
-        .eq("id", booking.id);
+        .in("id", successfulIds);
 
-      successCount++;
+      if (updateError) throw updateError;
     }
-  }
 
-  return Response.json({
-    message: `Synced ${successCount} bookings`,
-  });
+    return Response.json({
+      message: `Successfully synced ${successfulIds.length} out of ${bookings.length} bookings.`,
+    });
+
+  } catch (error: any) {
+    console.error("Sync Error:", error.message);
+    return Response.json({ error: error.message }, { status: 500 });
+  }
 }

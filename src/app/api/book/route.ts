@@ -1,115 +1,80 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import nodemailer from "nodemailer";
 
-// --- 1. SETUP & HELPERS ---
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
 
-// Helper for error logging
 function logError(context: string, error: any) {
-  console.error(`[${new Date().toISOString()}] ❌ ${context}:`, error.message || error);
-}
-
-// Helper to sync to Google Sheets (GAS)
-async function syncWithRetry(payload: any, retries = 3) {
-  for (let i = 1; i <= retries; i++) {
-    try {
-      if (!process.env.GAS_URL) throw new Error("Missing GAS_URL");
-      
-      const res = await fetch(process.env.GAS_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const result = await res.json();
-      if (result.success) return true;
-    } catch (err) {
-      // Silent fail on retry
-    }
-    await new Promise((r) => setTimeout(r, 500));
-  }
-  return false;
+  console.error(`[${new Date().toISOString()}] ❌ ${context}:`, error?.message || error);
 }
 
 export async function POST(req: Request) {
-  // Initialize the ADMIN client (Service Role)
-  // We use this for EVERYTHING to bypass RLS and ensure the server is the authority.
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
   try {
-    // --- 2. AUTHENTICATION CHECK ---
+    // ---------- AUTH ----------
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
-        return NextResponse.json({ success: false, message: "Missing authorization" }, { status: 401 });
+      return NextResponse.json({ success: false, message: "Missing authorization" }, { status: 401 });
     }
-    
-    // Check the user using the token
+
     const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(authHeader.replace("Bearer ", ""));
 
     if (userError || !user) {
-      logError("Auth", userError || "No user found");
+      logError("Auth", userError);
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
-    // --- 3. VALIDATION (The "Must Fix") ---
-    
-    // A. UP Email Validation (Security)
-    // We check the logged-in user's email, not just what they typed in the form.
+    // ---------- VALIDATION ----------
     if (!user.email?.endsWith("@up.edu.ph")) {
-        console.warn(`[Security] Blocked non-UP email: ${user.email}`);
-        return NextResponse.json({ 
-            success: false, 
-            message: "Strictly for UP students only. Please login with your UP email." 
-        }, { status: 403 });
+      return NextResponse.json({ success: false, message: "Strictly for UP students only." }, { status: 403 });
     }
 
-    // Parse the body now
     const body = await req.json();
-    const { type, date, time, mobile, action } = body; // 'action' is for reschedule logic
+    const { type, date, time, mobile, action } = body;
 
-    // B. Mobile Number Validation
     if (!mobile || mobile.length !== 11 || !mobile.startsWith("09")) {
-        return NextResponse.json({ 
-            success: false, 
-            message: "Invalid mobile number. Must be 11 digits starting with 09." 
-        }, { status: 400 });
+      return NextResponse.json({ success: false, message: "Invalid mobile number." }, { status: 400 });
     }
 
-    // --- 4. ATOMIC RESCHEDULE LOGIC ---
-    // If this is a reschedule, we perform the "Swap" logic here.
-    if (action === 'reschedule') {
-        // Double check they actually have a booking to reschedule
-        const { data: existing } = await supabaseAdmin
-            .from("bookings")
-            .select("id")
-            .eq("user_id", user.id)
-            .eq("status", "Confirmed")
-            .single();
-            
-        if (existing) {
-             // Mark old one as cancelled immediately before creating the new one
-             // (Or ideally inside a transaction, but this is safer than client-side)
-             await supabaseAdmin
-                .from("bookings")
-                .update({ status: 'Cancelled', synced: false })
-                .eq("id", existing.id);
-        }
+    // ---------- RESCHEDULE LOGIC ----------
+    if (action === "reschedule") {
+      const { data: existing } = await supabaseAdmin
+        .from("bookings")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("status", "Confirmed")
+        .single();
+
+      if (existing) {
+        // We set synced: false so the Cron job knows to update this in Google Sheets
+        await supabaseAdmin
+          .from("bookings")
+          .update({ status: "Cancelled", synced: false })
+          .eq("id", existing.id);
+      }
     } else {
-        // If NOT rescheduling, standard check: prevent double booking
-        const { count: existingCount } = await supabaseAdmin
-            .from("bookings")
-            .select("*", { count: "exact", head: true })
-            .eq("user_id", user.id)
-            .eq("status", "Confirmed");
+      const { count } = await supabaseAdmin
+        .from("bookings")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "Confirmed");
 
-        if ((existingCount || 0) > 0) {
-            return NextResponse.json({ success: false, message: "You already have an active booking." });
-        }
+      if ((count || 0) > 0) {
+        return NextResponse.json({ success: false, message: "You already have an active booking." });
+      }
     }
 
-    // --- 5. CAPACITY CHECK ---
+    // ---------- CAPACITY CHECK ----------
     const { data: config } = await supabaseAdmin
       .from("slot_config")
       .select("capacity")
@@ -134,8 +99,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Slot is fully booked." });
     }
 
-    // --- 6. INSERT NEW BOOKING ---
-    // Note: 'initial_booking_at' is handled automatically by your SQL Trigger!
+    // ---------- INSERT ----------
     const { data: inserted, error: insertError } = await supabaseAdmin
       .from("bookings")
       .insert([
@@ -145,13 +109,13 @@ export async function POST(req: Request) {
           date,
           time,
           name: body.name,
-          email: user.email, // Force use of the Verified Auth Email
+          email: user.email,
           mobile: body.mobile,
-          package: body.package,    
+          package: body.package,
           addons: body.addons || "",
           makeup: body.makeup,
           remarks: body.remarks || "",
-          synced: false,
+          synced: false, // This tells the Cron job "Sync me!"
         },
       ])
       .select()
@@ -159,63 +123,51 @@ export async function POST(req: Request) {
 
     if (insertError || !inserted) {
       logError("Insert", insertError);
-      return NextResponse.json({ success: false, message: "Database Error: Could not save booking." });
+      return NextResponse.json({ success: false, message: "Database Error" });
     }
 
-    // --- 7. BACKGROUND SYNC (Fire and Forget) ---
-    // We don't await this so the UI is snappy
-    (async () => {
-        // A. Retry syncing this current booking
-        const success = await syncWithRetry({
-            id: inserted.id,
-            type: inserted.type,
-            date: inserted.date,
-            time: inserted.time,
-            name: inserted.name,
-            email: inserted.email,
-            mobile: inserted.mobile,
-            packageName: inserted.package,
-            addOns: inserted.addons,
-            makeup: inserted.makeup,
-            remarks: inserted.remarks,
-        }, 3);
+    // ---------- EMAIL (INSTANT) ----------
+    try {
+      const logoUrl = "https://book-aninag2026.vercel.app/logo.png"; 
+      await transporter.sendMail({
+        from: `"Aninag 2026" <${process.env.GMAIL_USER}>`,
+        to: inserted.email,
+        subject: action === "reschedule" ? "Update: Your Aninag 2026 Schedule 🎓" : "Confirmed: Your Aninag 2026 Schedule 🎓",
+        html: `
+          <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f9f9f9; padding: 40px 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 8px solid #013220;">
+              <div style="padding: 30px; text-align: center; background-color: #013220;">
+                <img src="${logoUrl}" alt="Aninag 2026" style="width: 120px; height: auto; margin-bottom: 10px;">
+                <h1 style="color: #d4af37; margin: 0; font-size: 24px; letter-spacing: 1px;">ANINAG 2026</h1>
+              </div>
+              <div style="padding: 40px 30px;">
+                <h2 style="color: #333; margin-top: 0;">Hi ${inserted.name},</h2>
+                <p style="color: #555; font-size: 16px; line-height: 1.6;">
+                  ${action === "reschedule" ? "Your graduation photoshoot schedule has been **successfully updated**." : "Get your toga ready! Your graduation photoshoot booking is now **confirmed**."}
+                </p>
+                <div style="background-color: #f4f7f4; border-left: 4px solid #d4af37; padding: 20px; margin: 30px 0; border-radius: 4px;">
+                  <table style="width: 100%; border-collapse: collapse;">
+                    <tr><td style="padding: 8px 0; color: #777; font-size: 13px; text-transform: uppercase;">Location</td><td style="padding: 8px 0; color: #013220; font-weight: bold; text-align: right;">${inserted.type === 'studio' ? '📸 Studio' : '🏛️ Campus'}</td></tr>
+                    <tr><td style="padding: 8px 0; color: #777; font-size: 13px; text-transform: uppercase;">Date & Time</td><td style="padding: 8px 0; color: #013220; font-weight: bold; text-align: right;">${inserted.date} | ${inserted.time}</td></tr>
+                    <tr><td style="padding: 8px 0; color: #777; font-size: 13px; text-transform: uppercase;">Main Package</td><td style="padding: 8px 0; color: #013220; font-weight: bold; text-align: right;">${inserted.package}</td></tr>
+                    <tr><td style="padding: 8px 0; color: #777; font-size: 13px; text-transform: uppercase;">HMUA Service</td><td style="padding: 8px 0; color: #013220; font-weight: bold; text-align: right;">${inserted.makeup ? 'Included ✅' : 'Not Requested'}</td></tr>
+                    ${inserted.addons ? `<tr><td style="padding: 8px 0; color: #777; font-size: 13px; text-transform: uppercase;">Add-ons</td><td style="padding: 8px 0; color: #013220; font-weight: bold; text-align: right;">${inserted.addons}</td></tr>` : ''}
+                  </table>
+                </div>
+                <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
+                  <p style="margin: 0; color: #888; font-size: 12px;">Official Yearbook Publication of the UP Manila College of Arts and Sciences</p>
+                  <p style="margin: 5px 0 0; color: #888; font-size: 12px; font-weight: bold;">CAS BATCH 2026</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        `,
+      });
+    } catch (emailError) {
+      console.error("Email failed but booking saved:", emailError);
+    }
 
-        if (success) {
-            await supabaseAdmin.from("bookings").update({ synced: true }).eq("id", inserted.id);
-        }
-
-        // B. Clean up any other unsynced items (Self-Healing)
-        const { data: pending } = await supabaseAdmin.from("bookings").select("*").eq("synced", false).neq("id", inserted.id).limit(5);
-        if (pending) {
-            for (const p of pending) {
-              const payload = {
-                id: p.id,
-                type: p.type,
-                date: p.date,
-                time: p.time,
-                name: p.name,
-                email: p.email,
-                mobile: p.mobile,
-                packageName: p.package,   // 🔥 FIX
-                addOns: p.addons,         // 🔥 FIX
-                makeup: p.makeup,
-                remarks: p.remarks,
-                status: p.status,
-              };
-
-              syncWithRetry(payload).then(ok => {
-                if (ok) {
-                  supabaseAdmin
-                    .from("bookings")
-                    .update({ synced: true })
-                    .eq("id", p.id);
-                }
-              });
-            }
-
-        }
-    })();
-
+    // SYNC REMOVED: The Cron Job will handle the Google Sheets update independently.
     return NextResponse.json({ success: true });
 
   } catch (err: any) {
