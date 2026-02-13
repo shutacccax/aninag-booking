@@ -150,7 +150,21 @@ export async function POST(req: Request) {
                     <tr><td style="padding: 8px 0; color: #777; font-size: 13px; text-transform: uppercase;">Location</td><td style="padding: 8px 0; color: #013220; font-weight: bold; text-align: right;">${inserted.type === 'studio' ? '📸 Zone 5 Studio' : '🏛️ Campus'}</td></tr>
                     <tr><td style="padding: 8px 0; color: #777; font-size: 13px; text-transform: uppercase;">Date & Time</td><td style="padding: 8px 0; color: #013220; font-weight: bold; text-align: right;">${inserted.date} | ${inserted.time}</td></tr>
                     <tr><td style="padding: 8px 0; color: #777; font-size: 13px; text-transform: uppercase;">Main Package</td><td style="padding: 8px 0; color: #013220; font-weight: bold; text-align: right;">${inserted.package}</td></tr>
-                    <tr><td style="padding: 8px 0; color: #777; font-size: 13px; text-transform: uppercase;">HMUA Service</td><td style="padding: 8px 0; color: #013220; font-weight: bold; text-align: right;">${inserted.makeup ? 'Included ✅' : 'Not Requested'}</td></tr>
+                    <tr>
+                      <td style="padding: 8px 0; color: #777; font-size: 13px; text-transform: uppercase;">
+                        HMUA Service
+                      </td>
+                      <td style="padding: 8px 0; color: #013220; font-weight: bold; text-align: right;">
+                        ${
+                          inserted.makeup === "Availing hair & makeup services"
+                            ? "Availing ✅"
+                            : inserted.makeup === "Coming in with makeup done"
+                            ? "Coming in with makeup done"
+                            : "Not availing ❌"
+                        }
+                      </td>
+                    </tr>
+
                     ${inserted.addons ? `<tr><td style="padding: 8px 0; color: #777; font-size: 13px; text-transform: uppercase;">Add-ons</td><td style="padding: 8px 0; color: #013220; font-weight: bold; text-align: right;">${inserted.addons}</td></tr>` : ''}
                   </table>
                 </div>
