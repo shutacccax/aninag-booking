@@ -12,6 +12,7 @@
     "@google/genai": "^1.41.0",
     "@supabase/auth-helpers-nextjs": "^0.15.0",
     "@supabase/supabase-js": "^2.95.3",
+    "@vercel/analytics": "^1.6.1",
     "ai": "^6.0.85",
     "next": "16.1.6",
     "nodemailer": "^8.0.1",
