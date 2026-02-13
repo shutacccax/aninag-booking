@@ -210,9 +210,17 @@ export default function BookPage() {
                     </p>
                   </div>
 
-                  <div className="col-span-2">
+                  {/* Location & Status Row */}
+                  <div>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Location</p>
+                    <span className="inline-block mt-2 px-3 py-1 bg-[#013220]/10 text-[#013220] rounded-full text-[10px] font-bold uppercase border border-[#013220]/20">
+                      {booking.type === 'studio' ? '📸 Zone-5 Studio' : '🏛️ Campus'}
+                    </span>
+                  </div>
+
+                  <div>
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Status</p>
-                    <span className="inline-block mt-2 px-4 py-1 bg-[#800000]/10 text-[#800000] rounded-full text-xs font-bold uppercase">
+                    <span className="inline-block mt-2 px-3 py-1 bg-[#800000]/10 text-[#800000] rounded-full text-[10px] font-bold uppercase border border-[#800000]/20">
                       {booking.status}
                     </span>
                   </div>

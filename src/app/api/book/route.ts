@@ -147,7 +147,7 @@ export async function POST(req: Request) {
                 </p>
                 <div style="background-color: #f4f7f4; border-left: 4px solid #d4af37; padding: 20px; margin: 30px 0; border-radius: 4px;">
                   <table style="width: 100%; border-collapse: collapse;">
-                    <tr><td style="padding: 8px 0; color: #777; font-size: 13px; text-transform: uppercase;">Location</td><td style="padding: 8px 0; color: #013220; font-weight: bold; text-align: right;">${inserted.type === 'studio' ? '📸 Studio' : '🏛️ Campus'}</td></tr>
+                    <tr><td style="padding: 8px 0; color: #777; font-size: 13px; text-transform: uppercase;">Location</td><td style="padding: 8px 0; color: #013220; font-weight: bold; text-align: right;">${inserted.type === 'studio' ? '📸 Zone 5 Studio' : '🏛️ Campus'}</td></tr>
                     <tr><td style="padding: 8px 0; color: #777; font-size: 13px; text-transform: uppercase;">Date & Time</td><td style="padding: 8px 0; color: #013220; font-weight: bold; text-align: right;">${inserted.date} | ${inserted.time}</td></tr>
                     <tr><td style="padding: 8px 0; color: #777; font-size: 13px; text-transform: uppercase;">Main Package</td><td style="padding: 8px 0; color: #013220; font-weight: bold; text-align: right;">${inserted.package}</td></tr>
                     <tr><td style="padding: 8px 0; color: #777; font-size: 13px; text-transform: uppercase;">HMUA Service</td><td style="padding: 8px 0; color: #013220; font-weight: bold; text-align: right;">${inserted.makeup ? 'Included ✅' : 'Not Requested'}</td></tr>

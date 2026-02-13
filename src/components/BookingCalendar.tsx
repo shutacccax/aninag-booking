@@ -136,39 +136,39 @@ export default function BookingCalendar({
                   return (
                     <button
                       key={slot.time}
-                      disabled={isFull || viewOnly}
+                      // Only truly disable the button if the slot is FULL. 
+                      // Keep it enabled for viewOnly so the UI stays vibrant.
+                      disabled={isFull}
                       onClick={() => {
-                        if (viewOnly) return;
+                        if (viewOnly || isFull) return;
                         setSelectedTime(slot.time);
                         setShowModal(true);
                       }}
                       className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all group ${
-                        isFull || viewOnly
-                          ? "bg-gray-50 border-gray-100 opacity-60 cursor-not-allowed"
+                        isFull
+                          ? "bg-gray-50 border-gray-100 opacity-60 cursor-not-allowed" // Keep FULL looking disabled
+                          : viewOnly
+                          ? "bg-white border-gray-200 cursor-default" // ViewOnly looks fresh but doesn't change on hover
                           : "bg-white border-gray-200 hover:border-[#013220] hover:shadow-md cursor-pointer"
                       }`}
                     >
-                      <span
-                        className={`font-bold text-sm ${
-                          isFull || viewOnly
-                            ? "text-gray-400"
-                            : "text-gray-900 group-hover:text-[#013220]"
-                        }`}
-                      >
+                      <span className={`font-bold text-sm ${isFull ? "text-gray-400" : "text-gray-900"}`}>
                         {slot.time}
                       </span>
 
-                      <span
-                        className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${
+                      <div className="flex items-center gap-2">
+                        
+                        
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${
                           isFull
                             ? "bg-gray-200 text-gray-500"
                             : viewOnly
-                            ? "bg-gray-100 text-gray-400"
+                            ? "bg-[#013220]/5 text-[#013220]" // Keeps the text color vibrant and readable
                             : "bg-[#013220]/10 text-[#013220] group-hover:bg-[#013220] group-hover:text-white transition-colors"
-                        }`}
-                      >
-                        {isFull ? "FULL" : `${slot.remaining} SLOTS`}
-                      </span>
+                        }`}>
+                          {isFull ? "FULL" : `${slot.remaining} SLOTS`}
+                        </span>
+                      </div>
                     </button>
 
                   );
@@ -349,54 +349,56 @@ export default function BookingCalendar({
 
                 {/* --- ADD-ONS --- */}
                 {/* --- ADD-ONS --- */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                      <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400 px-1">
-                        Add-ons (Optional)
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setShowAddonGuide(!showAddonGuide)}
-                        className="text-[10px] text-[#013220] font-bold underline decoration-dotted hover:text-[#800000] transition-colors"
-                      >
-                        {showAddonGuide ? "Hide Examples" : "See Examples"}
-                      </button>
-                  </div>
-
-                  <input
-                    name="addons"
-                    placeholder="e.g. Couple, Standard, Premium"
-                    className="w-full bg-gray-50 border-gray-200 rounded-xl p-4 text-base focus:ring-2 focus:ring-[#013220] outline-none transition-all"
-                  />
-
-                  {/* --- COLLAPSIBLE GUIDE --- */}
-                  {showAddonGuide && (
-                    <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 text-xs space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                      <p className="font-bold text-gray-400 uppercase tracking-widest text-[9px] mb-2">
-                        Please use this format:
-                      </p>
-                      
-                      <div className="grid gap-2">
-                        <div className="flex gap-2 items-start">
-                          <span className="font-bold text-[#013220] min-w-[60px]">Couple</span>
-                          <span className="text-gray-600">2 pax: Juan, Jane</span>
-                        </div>
-                        <div className="flex gap-2 items-start">
-                          <span className="font-bold text-[#013220] min-w-[60px]">Standard</span>
-                          <span className="text-gray-600">3 pax: Juan, Jane, Joe</span>
-                        </div>
-                        <div className="flex gap-2 items-start">
-                          <span className="font-bold text-[#013220] min-w-[60px]">Premium</span>
-                          <span className="text-gray-600">6 pax: Juan, Jane, Joe, +3 more</span>
-                        </div>
-                      </div>
-                      
-                      <p className="text-[10px] text-gray-400 italic mt-2 border-t border-gray-100 pt-2">
-                        Note: Add names of all extra people included in the package.
-                      </p>
-                    </div>
-                  )}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400 px-1">
+                    Add-ons (Optional)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddonGuide(!showAddonGuide)}
+                    className="text-[10px] text-[#013220] font-bold underline decoration-dotted hover:text-[#800000] transition-colors"
+                  >
+                    {showAddonGuide ? "Hide Examples" : "See Examples"}
+                  </button>
                 </div>
+
+                <input
+                  name="addons"
+                  placeholder="e.g. Couple, Standard, Makeup: 3 pax"
+                  className="w-full bg-gray-50 border-gray-200 rounded-xl p-4 text-base focus:ring-2 focus:ring-[#013220] outline-none transition-all"
+                />
+
+                {/* --- COLLAPSIBLE GUIDE --- */}
+                {showAddonGuide && (
+                  <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 text-xs space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <p className="font-bold text-gray-400 uppercase tracking-widest text-[9px] mb-2">
+                      Please use this format:
+                    </p>
+                    
+                    <div className="grid gap-2">
+                      <div className="flex gap-2 items-start">
+                        <span className="font-bold text-[#013220] min-w-[60px]">Couple</span>
+                        <span className="text-gray-600">2 pax (2 with hair/makeup)</span>
+                      </div>
+
+                      <div className="flex gap-2 items-start">
+                        <span className="font-bold text-[#013220] min-w-[60px]">Standard</span>
+                        <span className="text-gray-600">3 pax (1 with hair/makeup)</span>
+                      </div>
+
+                      <div className="flex gap-2 items-start">
+                        <span className="font-bold text-[#013220] min-w-[60px]">Premium</span>
+                        <span className="text-gray-600">6 pax (No extra hair/makeup)</span>
+                      </div>
+                    </div>
+                    
+                    <p className="text-[10px] text-gray-400 italic mt-2 border-t border-gray-100 pt-2">
+                      Note: Simply indicate the total number of people and how many will avail of the extra services.
+                    </p>
+                  </div>
+                )}
+              </div>
 
                 {/* --- REMARKS --- */}
                 <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400 px-1">
