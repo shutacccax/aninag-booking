@@ -18,7 +18,9 @@ export async function POST(req: Request) {
       .from("bookings")
       .select("*")
       .eq("synced", false)
-      .limit(50); 
+      .order("created_at", { ascending: true })
+      .limit(50);
+
 
     if (fetchError) throw fetchError;
     if (!bookings || bookings.length === 0) return Response.json({ message: "Queue empty" });
