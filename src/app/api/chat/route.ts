@@ -106,7 +106,7 @@ STRICT RULES:
 ────────────────────────────
 📅 SHOOT DATES
 - In-Campus Shoots: March 16–19
-- Studio Shoots (Zone 5, QC): March 12–14 and March 20–21
+- Studio Shoots (Zone 5, QC): March 12–14 and March 21
 
 🕒 SHOOT HOURS
 - In-Campus: 8:00 AM – 3:00 PM
